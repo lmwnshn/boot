@@ -255,7 +255,8 @@ ExecProcNode(PlanState *node)
 {
 	if (node->chgParam != NULL) /* something changed? */
 		ExecReScan(node);		/* let ReScan handle this */
-
+	if (node->bytejack_stop)
+		return NULL;
 	return node->ExecProcNode(node);
 }
 #endif

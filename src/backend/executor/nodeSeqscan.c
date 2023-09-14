@@ -33,7 +33,7 @@
 #include "executor/nodeSeqscan.h"
 #include "utils/rel.h"
 
-static TupleTableSlot *SeqNext(SeqScanState *node);
+SeqNext_hook_type SeqNext_hook = NULL;
 
 /* ----------------------------------------------------------------
  *						Scan Support
@@ -46,8 +46,17 @@ static TupleTableSlot *SeqNext(SeqScanState *node);
  *		This is a workhorse for ExecSeqScan
  * ----------------------------------------------------------------
  */
-static TupleTableSlot *
-SeqNext(SeqScanState *node)
+TupleTableSlot *
+SeqNext(SeqScanState *node) {
+	if (SeqNext_hook) {
+		return SeqNext_hook(node);
+	} else {
+		return standard_SeqNext(node);
+	}
+}
+
+TupleTableSlot *
+standard_SeqNext(SeqScanState *node)
 {
 	TableScanDesc scandesc;
 	EState	   *estate;

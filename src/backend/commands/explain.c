@@ -44,6 +44,8 @@
 /* Hook for plugins to get control in ExplainOneQuery() */
 ExplainOneQuery_hook_type ExplainOneQuery_hook = NULL;
 
+ExplainIntercept_hook_type ExplainIntercept_hook = NULL;
+
 /* Hook for plugins to get control in explain_get_index_name() */
 explain_get_index_name_hook_type explain_get_index_name_hook = NULL;
 
@@ -54,10 +56,6 @@ explain_get_index_name_hook_type explain_get_index_name_hook = NULL;
 #define X_CLOSE_IMMEDIATE 2
 #define X_NOWHITESPACE 4
 
-static void ExplainOneQuery(Query *query, int cursorOptions,
-							IntoClause *into, ExplainState *es,
-							const char *queryString, ParamListInfo params,
-							QueryEnvironment *queryEnv);
 static void ExplainPrintJIT(ExplainState *es, int jit_flags,
 							JitInstrumentation *ji);
 static void report_triggers(ResultRelInfo *rInfo, bool show_relname,
@@ -259,38 +257,42 @@ ExplainQuery(ParseState *pstate, ExplainStmt *stmt,
 	 */
 	rewritten = QueryRewrite(castNode(Query, stmt->query));
 
-	/* emit opening boilerplate */
-	ExplainBeginOutput(es);
+	if (ExplainIntercept_hook) {
+		(*ExplainIntercept_hook)(jstate, pstate->p_sourcetext, params, pstate, es, rewritten);
+	} else {
+		/* emit opening boilerplate */
+		ExplainBeginOutput(es);
 
-	if (rewritten == NIL)
-	{
-		/*
-		 * In the case of an INSTEAD NOTHING, tell at least that.  But in
-		 * non-text format, the output is delimited, so this isn't necessary.
-		 */
-		if (es->format == EXPLAIN_FORMAT_TEXT)
-			appendStringInfoString(es->str, "Query rewrites to nothing\n");
-	}
-	else
-	{
-		ListCell   *l;
-
-		/* Explain every plan */
-		foreach(l, rewritten)
+		if (rewritten == NIL)
 		{
-			ExplainOneQuery(lfirst_node(Query, l),
-							CURSOR_OPT_PARALLEL_OK, NULL, es,
-							pstate->p_sourcetext, params, pstate->p_queryEnv);
-
-			/* Separate plans with an appropriate separator */
-			if (lnext(rewritten, l) != NULL)
-				ExplainSeparatePlans(es);
+			/*
+			 * In the case of an INSTEAD NOTHING, tell at least that.  But in
+			 * non-text format, the output is delimited, so this isn't necessary.
+			 */
+			if (es->format == EXPLAIN_FORMAT_TEXT)
+				appendStringInfoString(es->str, "Query rewrites to nothing\n");
 		}
-	}
+		else
+		{
+			ListCell   *l;
 
-	/* emit closing boilerplate */
-	ExplainEndOutput(es);
-	Assert(es->indent == 0);
+			/* Explain every plan */
+			foreach(l, rewritten)
+			{
+				ExplainOneQuery(lfirst_node(Query, l),
+								CURSOR_OPT_PARALLEL_OK, NULL, es,
+								pstate->p_sourcetext, params, pstate->p_queryEnv);
+
+				/* Separate plans with an appropriate separator */
+				if (lnext(rewritten, l) != NULL)
+					ExplainSeparatePlans(es);
+			}
+		}
+
+		/* emit closing boilerplate */
+		ExplainEndOutput(es);
+		Assert(es->indent == 0);
+	}
 
 	/* output tuples */
 	tstate = begin_tup_output_tupdesc(dest, ExplainResultDesc(stmt),
@@ -363,7 +365,7 @@ ExplainResultDesc(ExplainStmt *stmt)
  *
  * "into" is NULL unless we are explaining the contents of a CreateTableAsStmt.
  */
-static void
+void
 ExplainOneQuery(Query *query, int cursorOptions,
 				IntoClause *into, ExplainState *es,
 				const char *queryString, ParamListInfo params,
@@ -1643,6 +1645,9 @@ ExplainNode(PlanState *planstate, List *ancestors,
 			}
 			ExplainPropertyFloat("Actual Rows", NULL, rows, 0, es);
 			ExplainPropertyFloat("Actual Loops", NULL, nloops, 0, es);
+			ExplainPropertyFloat("Operator Time", "s", planstate->instrument->differenced_total, 3, es);
+			ExplainPropertyBool("Operator Stopped", planstate->bytejack_stop, es);
+			ExplainPropertyInteger("Plan Node Id", NULL, planstate->plan->plan_node_id, es);
 		}
 	}
 	else if (es->analyze)
@@ -1658,6 +1663,9 @@ ExplainNode(PlanState *planstate, List *ancestors,
 			}
 			ExplainPropertyFloat("Actual Rows", NULL, 0.0, 0, es);
 			ExplainPropertyFloat("Actual Loops", NULL, 0.0, 0, es);
+			ExplainPropertyFloat("Operator Time", "s", 0.0, 3, es);
+			ExplainPropertyBool("Operator Stopped", planstate->bytejack_stop, es);
+			ExplainPropertyInteger("Plan Node Id", NULL, planstate->plan->plan_node_id, es);
 		}
 	}
 
@@ -1709,6 +1717,9 @@ ExplainNode(PlanState *planstate, List *ancestors,
 				}
 				ExplainPropertyFloat("Actual Rows", NULL, rows, 0, es);
 				ExplainPropertyFloat("Actual Loops", NULL, nloops, 0, es);
+				ExplainPropertyFloat("Operator Time", "s", instrument->differenced_total, 3, es);
+				ExplainPropertyBool("Operator Stopped", planstate->bytejack_stop, es);
+				ExplainPropertyInteger("Plan Node Id", NULL, planstate->plan->plan_node_id, es);
 			}
 
 			ExplainCloseWorker(n, es);

@@ -677,6 +677,7 @@ typedef struct EState
 	int			es_jit_flags;
 	struct JitContext *es_jit;
 	struct JitInstrumentation *es_jit_worker_instr;
+	struct PlanState *es_current_planstate;
 } EState;
 
 
@@ -1081,6 +1082,7 @@ typedef struct PlanState
 	bool		outeropsset;
 	bool		inneropsset;
 	bool		resultopsset;
+	bool		bytejack_stop;
 } PlanState;
 
 /* ----------------

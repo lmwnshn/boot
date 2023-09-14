@@ -47,6 +47,9 @@
 #include "utils/elog.h"
 #include "utils/palloc.h"
 
+typedef void (*ConnectionLifetime_hook_type)(void);
+extern PGDLLIMPORT ConnectionLifetime_hook_type ConnectionLifetime_hook;
+
 /* ----------------------------------------------------------------
  *				Section 1:	variable-length datatypes (TOAST support)
  * ----------------------------------------------------------------

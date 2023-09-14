@@ -82,6 +82,8 @@
 #include "utils/timeout.h"
 #include "utils/timestamp.h"
 
+ConnectionLifetime_hook_type ConnectionLifetime_hook = NULL;
+
 /* ----------------
  *		global variables
  * ----------------
@@ -4367,6 +4369,9 @@ PostgresMain(const char *dbname, const char *username)
 
 	if (!ignore_till_sync)
 		send_ready_for_query = true;	/* initially, or after error */
+
+	if (ConnectionLifetime_hook)
+		ConnectionLifetime_hook();
 
 	/*
 	 * Non-error queries loop here.

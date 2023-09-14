@@ -16,6 +16,14 @@
 #include <unistd.h>
 
 #include "executor/instrument.h"
+#include "nodes/execnodes.h"
+
+#include "../../include/postgres.h"
+#include "../../include/portability/instr_time.h"
+#include "../../include/executor/instrument.h"
+#include "../../include/nodes/execnodes.h"
+
+InstrAddTupleBatchTimes_hook_type InstrAddTupleBatchTimes_hook = NULL;
 
 BufferUsage pgBufferUsage;
 static BufferUsage save_pgBufferUsage;
@@ -51,6 +59,41 @@ InstrAlloc(int n, int instrument_options, bool async_mode)
 	}
 
 	return instr;
+}
+
+void InstrProcNodePre(struct PlanState *node, struct PlanState *prev) {
+	instr_time end;
+	if (prev && prev->instrument && prev->instrument->need_timer) {
+		INSTR_TIME_SET_CURRENT(end);
+		INSTR_TIME_ACCUM_DIFF(prev->instrument->differenced_counter, end, prev->instrument->differenced_start);
+		prev->instrument->differenced_total = INSTR_TIME_GET_DOUBLE(prev->instrument->differenced_counter);
+		INSTR_TIME_ACCUM_DIFF(prev->instrument->tuple_counter, end, prev->instrument->differenced_start);
+	}
+	if (node && node->instrument && node->instrument->need_timer) {
+		INSTR_TIME_SET_CURRENT(node->instrument->differenced_start);
+	}
+}
+
+void InstrProcNodePost(struct PlanState *node, struct PlanState *prev) {
+	instr_time end;
+	bool reset_tuple_counter;
+	if (node && node->instrument && node->instrument->need_timer) {
+		INSTR_TIME_SET_CURRENT(end);
+		INSTR_TIME_ACCUM_DIFF(node->instrument->differenced_counter, end, node->instrument->differenced_start);
+		node->instrument->differenced_total = INSTR_TIME_GET_DOUBLE(node->instrument->differenced_counter);
+		INSTR_TIME_ACCUM_DIFF(node->instrument->tuple_counter, end, node->instrument->differenced_start);
+
+		reset_tuple_counter = false;
+		if (InstrAddTupleBatchTimes_hook) {
+			reset_tuple_counter = (*InstrAddTupleBatchTimes_hook)(node, 1, INSTR_TIME_GET_MICROSEC(node->instrument->tuple_counter));
+			if (reset_tuple_counter) {
+				INSTR_TIME_SET_ZERO(node->instrument->tuple_counter);
+			}
+		}
+	}
+	if (prev && prev->instrument && prev->instrument->need_timer) {
+		INSTR_TIME_SET_CURRENT(prev->instrument->differenced_start);
+	}
 }
 
 /* Initialize a pre-allocated instrumentation structure. */

@@ -15,6 +15,7 @@
 
 #include "portability/instr_time.h"
 
+struct PlanState;
 
 /*
  * BufferUsage and WalUsage counters keep being incremented infinitely,
@@ -74,6 +75,11 @@ typedef struct Instrumentation
 	bool		running;		/* true if we've completed first tuple */
 	instr_time	starttime;		/* start time of current iteration of node */
 	instr_time	counter;		/* accumulated runtime for this node */
+	instr_time	differenced_start;	/* TODO(WAN) */
+	instr_time	differenced_counter;	/* TODO(WAN) */
+	double		differenced_total;	/* TODO(WAN) */
+	instr_time	tuple_counter;		/* TODO(WAN) */
+	instr_time	secondary_counter;	/* TODO(WAN) */
 	double		firsttuple;		/* time for first tuple of this cycle */
 	double		tuplecount;		/* # of tuples emitted so far this cycle */
 	BufferUsage bufusage_start; /* buffer usage at start */
@@ -99,8 +105,13 @@ typedef struct WorkerInstrumentation
 extern PGDLLIMPORT BufferUsage pgBufferUsage;
 extern PGDLLIMPORT WalUsage pgWalUsage;
 
+typedef bool (*InstrAddTupleBatchTimes_hook_type)(struct PlanState *node, double n_tuples, double accumulated_us);
+extern PGDLLIMPORT InstrAddTupleBatchTimes_hook_type InstrAddTupleBatchTimes_hook;
+
 extern Instrumentation *InstrAlloc(int n, int instrument_options,
 								   bool async_mode);
+extern void InstrProcNodePre(struct PlanState *node, struct PlanState *prev);
+extern void InstrProcNodePost(struct PlanState *node, struct PlanState *prev);
 extern void InstrInit(Instrumentation *instr, int instrument_options);
 extern void InstrStartNode(Instrumentation *instr);
 extern void InstrStopNode(Instrumentation *instr, double nTuples);

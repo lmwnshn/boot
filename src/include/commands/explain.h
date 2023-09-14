@@ -16,6 +16,7 @@
 #include "executor/executor.h"
 #include "lib/stringinfo.h"
 #include "parser/parse_node.h"
+#include "utils/queryjumble.h"
 
 typedef enum ExplainFormat
 {
@@ -71,6 +72,9 @@ typedef void (*ExplainOneQuery_hook_type) (Query *query,
 										   QueryEnvironment *queryEnv);
 extern PGDLLIMPORT ExplainOneQuery_hook_type ExplainOneQuery_hook;
 
+typedef void (*ExplainIntercept_hook_type) (JumbleState *jstate, const char *queryString, ParamListInfo params, ParseState *pstate, ExplainState *es, List *rewritten);
+extern PGDLLIMPORT ExplainIntercept_hook_type ExplainIntercept_hook;
+
 /* Hook for plugins to get control in explain_get_index_name() */
 typedef const char *(*explain_get_index_name_hook_type) (Oid indexId);
 extern PGDLLIMPORT explain_get_index_name_hook_type explain_get_index_name_hook;
@@ -78,6 +82,10 @@ extern PGDLLIMPORT explain_get_index_name_hook_type explain_get_index_name_hook;
 
 extern void ExplainQuery(ParseState *pstate, ExplainStmt *stmt,
 						 ParamListInfo params, DestReceiver *dest);
+extern void ExplainOneQuery(Query *query, int cursorOptions,
+						 IntoClause *into, ExplainState *es,
+						 const char *queryString, ParamListInfo params,
+						 QueryEnvironment *queryEnv);
 
 extern ExplainState *NewExplainState(void);
 

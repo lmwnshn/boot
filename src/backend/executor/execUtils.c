@@ -159,6 +159,8 @@ CreateExecutorState(void)
 	estate->es_jit_flags = 0;
 	estate->es_jit = NULL;
 
+	estate->es_current_planstate = NULL;
+
 	/*
 	 * Return the executor state structure
 	 */

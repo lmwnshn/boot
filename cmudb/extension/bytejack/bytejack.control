@@ -1,0 +1,4 @@
+# bytejack extension
+comment = 'bytejack'
+default_version = '0.0.1'
+relocatable = true
