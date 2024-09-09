@@ -17,9 +17,14 @@
 #include "access/parallel.h"
 #include "nodes/execnodes.h"
 
+typedef TupleTableSlot *(*SeqNext_hook_type) (SeqScanState *node);
+extern PGDLLIMPORT SeqNext_hook_type SeqNext_hook;
+
 extern SeqScanState *ExecInitSeqScan(SeqScan *node, EState *estate, int eflags);
 extern void ExecEndSeqScan(SeqScanState *node);
 extern void ExecReScanSeqScan(SeqScanState *node);
+extern TupleTableSlot *SeqNext(SeqScanState *node);
+extern TupleTableSlot *standard_SeqNext(SeqScanState *node);
 
 /* parallel scan support */
 extern void ExecSeqScanEstimate(SeqScanState *node, ParallelContext *pcxt);

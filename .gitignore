@@ -42,3 +42,14 @@ lib*.pc
 /Debug/
 /Release/
 /tmp_install/
+
+/.idea/
+/artifact*/
+/build/
+/data/
+/cmudb/extension/boot_rs/target/debug/
+/cmudb/extension/boot_rs/target/release/
+/cmudb/extension/boot_rs/target/.rustc_info.json
+/cmudb/extension/boot_rs/target/CACHEDIR.TAG
+/cmudb/runner/__pycache__/
+/venv/

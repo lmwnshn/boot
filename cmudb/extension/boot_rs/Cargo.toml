@@ -1,0 +1,12 @@
+[package]
+name = "boot_rs"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+redis = "*"
+serde_json = "1.0"
+welford = "0.1.0"
+
+[lib]
+crate-type = ["staticlib"]

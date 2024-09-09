@@ -14,12 +14,12 @@
 #ifndef EXECUTOR_H
 #define EXECUTOR_H
 
+#include "../nodes/execnodes.h"
 #include "executor/execdesc.h"
 #include "fmgr.h"
 #include "nodes/lockoptions.h"
 #include "nodes/parsenodes.h"
 #include "utils/memutils.h"
-
 
 /*
  * The "eflags" argument to ExecutorStart and the various ExecInitNode
@@ -255,7 +255,8 @@ ExecProcNode(PlanState *node)
 {
 	if (node->chgParam != NULL) /* something changed? */
 		ExecReScan(node);		/* let ReScan handle this */
-
+	if (node->boot_stop)
+		return NULL;
 	return node->ExecProcNode(node);
 }
 #endif

@@ -474,12 +474,18 @@ static TupleTableSlot *
 ExecProcNodeInstr(PlanState *node)
 {
 	TupleTableSlot *result;
+	PlanState *prev;
 
+	prev = node->state->es_current_planstate;
+	node->state->es_current_planstate = node;
+	InstrProcNodePre(node, prev);
 	InstrStartNode(node->instrument);
 
 	result = node->ExecProcNodeReal(node);
 
 	InstrStopNode(node->instrument, TupIsNull(result) ? 0.0 : 1.0);
+	InstrProcNodePost(node, prev);
+	node->state->es_current_planstate = prev;
 
 	return result;
 }
